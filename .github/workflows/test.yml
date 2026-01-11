@@ -43,5 +43,5 @@ jobs:
         uses: hydewww/otel-cicd-action@main
         with: 
           githubToken: ${{ secrets.GH_TOKEN }}
-        env:
-          OTEL_CONSOLE_ONLY: "true"
+          otlpEndpoint: grpc://api.honeycomb.io:443/
+          otlpHeaders: ${{ secrets.OTLP_HEADERS }}
