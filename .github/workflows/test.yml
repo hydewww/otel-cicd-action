@@ -37,5 +37,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Export workflow
         uses: hydewww/otel-cicd-action@main
+        with: 
+          githubToken: ${{ secrets.GH_TOKEN }}
         env:
           OTEL_CONSOLE_ONLY: "true"
