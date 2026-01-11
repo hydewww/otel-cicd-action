@@ -3,6 +3,10 @@ name: Sequential Self-Hosted Workflow
 on:
   push:
   workflow_dispatch: # 允许手动触发
+    inputs:
+      traceParent:
+        required: false
+        type: string
 
 permissions:
   contents: read
