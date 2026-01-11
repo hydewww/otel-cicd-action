@@ -8,6 +8,32 @@ import { getJobsAnnotations, getPRsLabels, getWorkflowRun, listJobsForWorkflowRu
 import { traceWorkflowRun } from "./trace/workflow";
 import { createTracerProvider, stringToRecord } from "./tracer";
 
+function getTraceParent(): string | undefined {
+  // Priority 1: Action input (with.traceParent)
+  const inputTraceParent = core.getInput("traceParent");
+  if (inputTraceParent) {
+    return inputTraceParent;
+  }
+
+  // Priority 2: repository_dispatch event payload
+  const clientPayloadTraceParent = (context.payload as Record<string, unknown>)?.["client_payload"] as
+    | { traceParent?: string }
+    | undefined;
+  if (typeof clientPayloadTraceParent?.traceParent === "string") {
+    return clientPayloadTraceParent.traceParent;
+  }
+
+  // Priority 3: workflow_dispatch event payload inputs
+  const inputsTraceParent = (context.payload as Record<string, unknown>)?.["inputs"] as
+    | { traceParent?: string }
+    | undefined;
+  if (typeof inputsTraceParent?.traceParent === "string") {
+    return inputsTraceParent.traceParent;
+  }
+
+  return undefined;
+}
+
 async function fetchGithub(token: string, runId: number) {
   const octokit = getOctokit(token);
 
@@ -54,6 +80,7 @@ async function run() {
     const runId = Number.parseInt(core.getInput("runId") || `${context.runId}`);
     const extraAttributes = stringToRecord(core.getInput("extraAttributes"));
     const ghToken = core.getInput("githubToken") || process.env["GITHUB_TOKEN"] || "";
+    const traceParent = getTraceParent();
 
     core.info("Use Github API to fetch workflow data");
     const { workflowRun, jobs, jobAnnotations, prLabels } = await fetchGithub(ghToken, runId);
@@ -74,7 +101,7 @@ async function run() {
     const provider = createTracerProvider(otlpEndpoint, otlpHeaders, attributes);
 
     core.info(`Trace workflow run for ${runId} and export to ${otlpEndpoint}`);
-    const traceId = await traceWorkflowRun(workflowRun, jobs, jobAnnotations, prLabels);
+    const traceId = await traceWorkflowRun(workflowRun, jobs, jobAnnotations, prLabels, traceParent);
 
     core.setOutput("traceId", traceId);
     core.info(`traceId: ${traceId}`);
